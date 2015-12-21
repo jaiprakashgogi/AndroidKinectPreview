@@ -3,17 +3,23 @@ package com.jaiprakashgogi.androidkinect;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 public class KinectActivity extends Activity {
@@ -22,6 +28,10 @@ public class KinectActivity extends Activity {
 	private TextView textView;
 	private Button button;
 	private Mat rgb, depth;
+	private ImageView imrgb;
+	private int count = 0;
+	private Handler staticHandler;
+	private boolean kinectstatus = false;
 
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 		@Override
@@ -31,8 +41,8 @@ public class KinectActivity extends Activity {
 				Log.i(TAG, "OpenCV loaded successfully");
 				// Load native library after(!) OpenCV initialization
 				System.loadLibrary("androidkinect");
-				rgb = new Mat(480, 640, CvType.CV_8UC3 );
-				depth = new Mat(480, 640, CvType.CV_8UC1 );
+				rgb = new Mat(480, 640, CvType.CV_8UC3);
+				depth = new Mat(480, 640, CvType.CV_8UC1);
 			}
 				break;
 			default: {
@@ -51,12 +61,27 @@ public class KinectActivity extends Activity {
 		textView = (TextView) findViewById(R.id.tv);
 		button = (Button) findViewById(R.id.button);
 		button.setOnClickListener(new OnClickListener() {
-
+			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				textView.setText(callnative(rgb.getNativeObjAddr(), depth.getNativeObjAddr()));
+				if (kinectstatus == false) {
+					textView.setText(callnative(rgb.getNativeObjAddr(), depth.getNativeObjAddr(), true));
+					kinectstatus = true;
+				} else {
+					textView.setText(callnative(rgb.getNativeObjAddr(), depth.getNativeObjAddr(), false));
+					kinectstatus = false;
+				}
 			}
 		});
+		imrgb = (ImageView) findViewById(R.id.imageView1);
+		Handler handler = new Handler() {
+			@Override
+			public void handleMessage(Message msg) {
+				Log.i(TAG, "Message received " + msg.what);
+				textView.setText("Jai: " + msg.what);
+			}
+		};
+		staticHandler = handler;
 	}
 
 	@Override
@@ -79,16 +104,45 @@ public class KinectActivity extends Activity {
 		super.onPause();
 	}
 
-	public native String callnative(long l, long m);
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		staticHandler = null;
+	}
 
-/*	static {
-		System.loadLibrary("androidkinect");
-	}*/
-	
+	public native String callnative(long l, long m, boolean status);
+
+	/*
+	 * static { System.loadLibrary("androidkinect"); }
+	 */
+
 	public void nativecallback() {
-		byte[] temp = new byte[rgb.channels()];
-		rgb.get(100, 100, temp);
-	    Log.e(TAG, "Jai: RGB and depthmap received " + temp[0]);
+		/*
+		 * byte[] temp = new byte[rgb.channels()]; rgb.get(100, 100, temp);
+		 * Log.e(TAG, "Jai: RGB and depthmap received " + temp[0]);
+		 * textView.setText("Pixel value is " + temp[0]); Bitmap img =
+		 * Bitmap.createBitmap(rgb.cols(), rgb.rows(),Bitmap.Config.ARGB_8888);
+		 * Utils.matToBitmap(rgb, img); if(imrgb != null){
+		 * imrgb.setImageBitmap(img); }
+		 */
+		/*
+		 * textView.setText("Callback received:" + count );
+		 * textView.invalidate(); count++;
+		 */
+		// staticHandler.sendEmptyMessage(count);
+		(new Thread(new Runnable() {
+			@Override
+			public void run() {
+				Message msg = staticHandler.obtainMessage();
+				msg.what = count;
+				// TODO Auto-generated method stub
+				Log.i(TAG, "Sending message");
+				staticHandler.sendMessage(msg);
+
+			}
+		})).start();
+		count++;
 	}
 
 }

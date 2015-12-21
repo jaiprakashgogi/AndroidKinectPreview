@@ -2,7 +2,7 @@
 #include "androidkinect.h"
 #if OPENCV
 #include "libfreenect.hpp"
-#include <iostream>
+//#include <iostream>
 #include <vector>
 #include <cmath>
 #include <pthread.h>
@@ -16,33 +16,17 @@
 
 using namespace cv;
 using namespace std;
-
-int main_kinect(void);
 #endif
 
 jclass cls;
 jmethodID mid;
 JNIEnv *env;
 jobject obj;
+#if OPENCV
 Mat depthMat;
 Mat rgbMat;
+bool die(false);
 
-JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_callnative(
-		JNIEnv *Env, jobject Obj, jlong rgb, jlong depth) {
-	obj = Obj;
-	env = Env;
-	cls = env->GetObjectClass(obj);
-	mid = env->GetMethodID(cls, "nativecallback", "()V");
-	if (mid == 0)
-		return env->NewStringUTF("Mid is zero.");
-	//env->CallVoidMethod(obj, mid, 8850);
-	depthMat = *(Mat *) depth;
-	rgbMat = *(Mat *) rgb;
-	main_kinect();
-	return env->NewStringUTF("Hello from JNI !  Compiled with ABI.");
-}
-
-#if OPENCV
 class myMutex {
 public:
 	myMutex() {
@@ -61,11 +45,11 @@ private:
 class MyFreenectDevice: public Freenect::FreenectDevice {
 public:
 	MyFreenectDevice(freenect_context *_ctx, int _index) :
-	Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(
-			FREENECT_DEPTH_11BIT), m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(
-			2048), m_new_rgb_frame(false), m_new_depth_frame(false), depthMat(
-			Size(640, 480), CV_16UC1), rgbMat(Size(640, 480), CV_8UC3,
-			Scalar(0)), ownMat(Size(640, 480), CV_8UC3, Scalar(0)) {
+			Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(
+					FREENECT_DEPTH_11BIT), m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(
+					2048), m_new_rgb_frame(false), m_new_depth_frame(false), depthMat(
+					Size(640, 480), CV_16UC1), rgbMat(Size(640, 480), CV_8UC3,
+					Scalar(0)), ownMat(Size(640, 480), CV_8UC3, Scalar(0)) {
 
 		for (unsigned int i = 0; i < 2048; i++) {
 			float v = i / 2048.0;
@@ -133,54 +117,95 @@ private:
 	bool m_new_depth_frame;
 };
 
-int main_kinect(void) {
-	bool die(false);
-	string filename("/sdcard/DCIM/Camera/snapshot");
-	string suffix(".png");
-	int i_snap(0), iter(0);
-
-	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai start");
+int start_kinect(void) {
+	/*	bool die(false);
+	 string filename("/sdcard/DCIM/Camera/snapshot");
+	 string suffix(".png");
+	 int i_snap(0), iter(0);*/
 	//Mat depthMat(Size(640, 480), CV_16UC1);
 	Mat depthf(Size(640, 480), CV_8UC1);
 	//Mat rgbMat(Size(640, 480), CV_8UC3, Scalar(0));
 	Mat ownMat(Size(640, 480), CV_8UC3, Scalar(0));
 
-	// The next two lines must be changed as Freenect::Freenect
-	// isn't a template but the method createDevice:
-	// Freenect::Freenect<MyFreenectDevice> freenect;
-	// MyFreenectDevice& device = freenect.createDevice(0);
-	// by these two lines:
-
-	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
-			"Jai about to initialize Freenect");
-
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
-
 	device.startVideo();
 	device.startDepth();
 	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai startVideo done");
-	while (!die) {
-		device.getVideo(rgbMat);
-		device.getDepth(depthMat);
-		depthMat.convertTo(depthf, CV_8UC1, 255.0 / 2048.0);
-		env->CallVoidMethod(obj, mid);
-		/*			std::ostringstream file;
-		 file << filename << i_snap << suffix;
-		 for(int y = 100; y< 110; y++)
-		 for(int x = 100; x< 110; x++)
-		 __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai (%d, %d) = %d", y,x, rgbMat.at<uchar>(y,x));
-		 cv::imwrite("/sdcard/DCIM/Camera/snapshot.jpg",rgbMat);*/
-		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai id %i", i_snap);
-		i_snap++;
-		if (iter >= 1000)
-		break;
-		iter++;
-	}
-	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai closing");
-	device.stopVideo();
-	device.stopDepth();
+	/*	while (!die) {
+	 device.getVideo(rgbMat);
+	 device.getDepth(depthMat);
+	 depthMat.convertTo(depthf, CV_8UC1, 255.0 / 2048.0);
+	 env->CallVoidMethod(obj, mid);
+	 std::ostringstream file;
+	 file << filename << i_snap << suffix;
+	 for(int y = 100; y< 110; y++)
+	 for(int x = 100; x< 110; x++)
+	 __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai (%d, %d) = %d", y,x, rgbMat.at<uchar>(y,x));
+	 cv::imwrite("/sdcard/DCIM/Camera/snapshot.jpg",rgbMat);
+	 __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai id %i", i_snap);
+	 i_snap++;
+	 if (iter >= 1000)
+	 break;
+	 iter++;
+	 }
+	 __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai closing");
+	 device.stopVideo();
+	 device.stopDepth();*/
 	return 0;
 }
 
 #endif
+
+void *KinectPreview(void *) {
+	Freenect::Freenect freenect;
+	MyFreenectDevice & device = freenect.createDevice<MyFreenectDevice>(0);
+	device.startVideo();
+	device.startDepth();
+	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
+					"Thread started");
+	while (!die) {
+		device.getVideo(rgbMat);
+		device.getDepth(depthMat);
+		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
+						"Frames received");
+	}
+	device.stopVideo();
+	device.stopDepth();
+	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
+					"Thread stopped");
+	pthread_exit(NULL);
+}
+
+JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_callnative(
+		JNIEnv *Env, jobject Obj, jlong rgb, jlong depth, jboolean status) {
+	obj = Obj;
+	env = Env;
+	cls = env->GetObjectClass(obj);
+	mid = env->GetMethodID(cls, "nativecallback", "()V");
+	if (mid == 0)
+		return env->NewStringUTF("Mid is zero.");
+#if OPENCV
+	depthMat = *(Mat *) depth;
+	rgbMat = *(Mat *) rgb;
+#endif
+
+	pthread_t threads;
+	if (status) {
+		int rc = pthread_create(&threads, NULL, KinectPreview, NULL);
+		if (rc) {
+			__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
+					"Unable to create Thread");
+		}
+
+		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME,
+				"Jai startVideo done");
+		return env->NewStringUTF("Preview Started..");
+	} else {
+		die = true;
+		//pthread_exit(NULL);
+		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Stopping thread");
+		return env->NewStringUTF("Preview Stopped..");
+	}
+
+}

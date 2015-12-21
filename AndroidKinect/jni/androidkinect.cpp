@@ -1,4 +1,6 @@
+#define OPENCV 1
 #include "androidkinect.h"
+#if OPENCV
 #include "libfreenect.hpp"
 #include <iostream>
 #include <vector>
@@ -16,14 +18,31 @@ using namespace cv;
 using namespace std;
 
 int main_kinect(void);
+#endif
+
+jclass cls;
+jmethodID mid;
+JNIEnv *env;
+jobject obj;
+Mat depthMat;
+Mat rgbMat;
 
 JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_callnative(
-		JNIEnv *env, jobject) {
-
-	//main_kinect();
+		JNIEnv *Env, jobject Obj, jlong rgb, jlong depth) {
+	obj = Obj;
+	env = Env;
+	cls = env->GetObjectClass(obj);
+	mid = env->GetMethodID(cls, "nativecallback", "()V");
+	if (mid == 0)
+		return env->NewStringUTF("Mid is zero.");
+	//env->CallVoidMethod(obj, mid, 8850);
+	depthMat = *(Mat *) depth;
+	rgbMat = *(Mat *) rgb;
+	main_kinect();
 	return env->NewStringUTF("Hello from JNI !  Compiled with ABI.");
 }
 
+#if OPENCV
 class myMutex {
 public:
 	myMutex() {
@@ -42,11 +61,11 @@ private:
 class MyFreenectDevice: public Freenect::FreenectDevice {
 public:
 	MyFreenectDevice(freenect_context *_ctx, int _index) :
-			Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(
-					FREENECT_DEPTH_11BIT), m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(
-					2048), m_new_rgb_frame(false), m_new_depth_frame(false), depthMat(
-					Size(640, 480), CV_16UC1), rgbMat(Size(640, 480), CV_8UC3,
-					Scalar(0)), ownMat(Size(640, 480), CV_8UC3, Scalar(0)) {
+	Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(
+			FREENECT_DEPTH_11BIT), m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(
+			2048), m_new_rgb_frame(false), m_new_depth_frame(false), depthMat(
+			Size(640, 480), CV_16UC1), rgbMat(Size(640, 480), CV_8UC3,
+			Scalar(0)), ownMat(Size(640, 480), CV_8UC3, Scalar(0)) {
 
 		for (unsigned int i = 0; i < 2048; i++) {
 			float v = i / 2048.0;
@@ -121,9 +140,9 @@ int main_kinect(void) {
 	int i_snap(0), iter(0);
 
 	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai start");
-	Mat depthMat(Size(640, 480), CV_16UC1);
+	//Mat depthMat(Size(640, 480), CV_16UC1);
 	Mat depthf(Size(640, 480), CV_8UC1);
-	Mat rgbMat(Size(640, 480), CV_8UC3, Scalar(0));
+	//Mat rgbMat(Size(640, 480), CV_8UC3, Scalar(0));
 	Mat ownMat(Size(640, 480), CV_8UC3, Scalar(0));
 
 	// The next two lines must be changed as Freenect::Freenect
@@ -145,6 +164,7 @@ int main_kinect(void) {
 		device.getVideo(rgbMat);
 		device.getDepth(depthMat);
 		depthMat.convertTo(depthf, CV_8UC1, 255.0 / 2048.0);
+		env->CallVoidMethod(obj, mid);
 		/*			std::ostringstream file;
 		 file << filename << i_snap << suffix;
 		 for(int y = 100; y< 110; y++)
@@ -154,7 +174,7 @@ int main_kinect(void) {
 		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai id %i", i_snap);
 		i_snap++;
 		if (iter >= 1000)
-			break;
+		break;
 		iter++;
 	}
 	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Jai closing");
@@ -162,3 +182,5 @@ int main_kinect(void) {
 	device.stopDepth();
 	return 0;
 }
+
+#endif

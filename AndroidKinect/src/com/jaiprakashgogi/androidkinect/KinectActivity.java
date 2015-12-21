@@ -3,6 +3,8 @@ package com.jaiprakashgogi.androidkinect;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -19,6 +21,7 @@ public class KinectActivity extends Activity {
 	private static final String TAG = "KinectActivity";
 	private TextView textView;
 	private Button button;
+	private Mat rgb, depth;
 
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 		@Override
@@ -28,6 +31,8 @@ public class KinectActivity extends Activity {
 				Log.i(TAG, "OpenCV loaded successfully");
 				// Load native library after(!) OpenCV initialization
 				System.loadLibrary("androidkinect");
+				rgb = new Mat(480, 640, CvType.CV_8UC3 );
+				depth = new Mat(480, 640, CvType.CV_8UC1 );
 			}
 				break;
 			default: {
@@ -49,7 +54,7 @@ public class KinectActivity extends Activity {
 
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				textView.setText(callnative());
+				textView.setText(callnative(rgb.getNativeObjAddr(), depth.getNativeObjAddr()));
 			}
 		});
 	}
@@ -74,10 +79,16 @@ public class KinectActivity extends Activity {
 		super.onPause();
 	}
 
-	public native String callnative();
+	public native String callnative(long l, long m);
 
 /*	static {
 		System.loadLibrary("androidkinect");
 	}*/
+	
+	public void nativecallback() {
+		byte[] temp = new byte[rgb.channels()];
+		rgb.get(100, 100, temp);
+	    Log.e(TAG, "Jai: RGB and depthmap received " + temp[0]);
+	}
 
 }

@@ -60,10 +60,10 @@ extern "C" {
 /*
  * Class:     com_jaiprakashgogi_androidkinect_KinectActivity
  * Method:    callnative
- * Signature: ()Ljava/lang/String;
+ * Signature: (JJ)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_callnative
-  (JNIEnv *, jobject);
+  (JNIEnv *, jobject, jlong, jlong);
 
 #ifdef __cplusplus
 }

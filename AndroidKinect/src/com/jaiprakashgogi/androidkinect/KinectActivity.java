@@ -32,6 +32,7 @@ public class KinectActivity extends Activity {
 	private int count = 0;
 	private Handler staticHandler;
 	private boolean kinectstatus = false;
+	private Bitmap img;
 
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 		@Override
@@ -43,6 +44,7 @@ public class KinectActivity extends Activity {
 				System.loadLibrary("androidkinect");
 				rgb = new Mat(480, 640, CvType.CV_8UC3);
 				depth = new Mat(480, 640, CvType.CV_8UC1);
+				img = Bitmap.createBitmap(rgb.cols(), rgb.rows(),Bitmap.Config.ARGB_8888);
 			}
 				break;
 			default: {
@@ -79,6 +81,10 @@ public class KinectActivity extends Activity {
 			public void handleMessage(Message msg) {
 				Log.i(TAG, "Message received " + msg.what);
 				textView.setText("Jai: " + msg.what);
+				if(imrgb != null){
+					imrgb.setImageBitmap(img);
+					imrgb.invalidate();
+				}
 			}
 		};
 		staticHandler = handler;
@@ -134,14 +140,16 @@ public class KinectActivity extends Activity {
 		(new Thread(new Runnable() {
 			@Override
 			public void run() {
-				Message msg = staticHandler.obtainMessage();
+				Utils.matToBitmap(rgb, img);
+/*				Message msg = staticHandler.obtainMessage();
 				msg.what = count;
 				// TODO Auto-generated method stub
 				Log.i(TAG, "Sending message");
-				staticHandler.sendMessage(msg);
-
+				staticHandler.sendMessage(msg);*/
+				staticHandler.sendEmptyMessage(count);
 			}
 		})).start();
+		Log.i(TAG, "Jai frame update request");
 		count++;
 	}
 

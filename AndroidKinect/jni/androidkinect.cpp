@@ -1,8 +1,5 @@
-#define OPENCV 1
 #include "androidkinect.h"
-#if OPENCV
 #include "libfreenect.hpp"
-//#include <iostream>
 #include <vector>
 #include <cmath>
 #include <pthread.h>
@@ -16,17 +13,11 @@
 
 using namespace cv;
 using namespace std;
-#endif
 
-/*jclass cls;
-jmethodID mid;
-JNIEnv *env;
-jobject obj;*/
 static JavaVM* jvm = 0;
 static jobject activity = 0; // GlobalRef
-#if OPENCV
-Mat depthMat;
-Mat rgbMat;
+Mat depthImg;
+Mat rgbImg;
 bool die(false);
 
 class myMutex {
@@ -84,7 +75,8 @@ public:
 	bool getVideo(Mat& output) {
 		m_rgb_mutex.lock();
 		if (m_new_rgb_frame) {
-			cv::cvtColor(rgbMat, output, CV_RGB2BGR);
+			//cv::cvtColor(rgbMat, output, CV_RGB2BGR);
+			rgbMat.copyTo(output);
 			m_new_rgb_frame = false;
 			m_rgb_mutex.unlock();
 			return true;
@@ -119,8 +111,6 @@ private:
 	bool m_new_depth_frame;
 };
 
-#endif
-
 void sendCallback(JNIEnv* env, jmethodID methodID){
     env->CallVoidMethod(activity, methodID);
     __android_log_print(ANDROID_LOG_DEBUG, "threadFunction", "Not Detaching");
@@ -136,11 +126,12 @@ void *KinectPreview(void *) {
 	MyFreenectDevice & device = freenect.createDevice<MyFreenectDevice>(0);
 	device.startVideo();
 	device.startDepth();
+	Mat depthMat(Size(640,480),CV_16UC1);
 	__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Thread started");
 	while (!die) {
-		device.getVideo(rgbMat);
+		device.getVideo(rgbImg);
 		device.getDepth(depthMat);
-		//env->CallVoidMethod(obj,mid);
+		depthMat.convertTo(depthImg, CV_8UC1, 255.0/2048.0);
 		sendCallback(env, methodID);
 		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Frames received");
 	}
@@ -156,18 +147,11 @@ JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_c
 		JNIEnv *env, jobject thiz, jlong rgb, jlong depth, jboolean status) {
     env->GetJavaVM(&jvm);
     activity = env->NewGlobalRef(thiz);
-/*	obj = Obj;
-	env = Env;
-	cls = env->GetObjectClass(obj);
-	mid = env->GetMethodID(cls, "nativecallback", "()V");
-	if (mid == 0)
-		return env->NewStringUTF("Mid is zero.");*/
-#if OPENCV
-	depthMat = *(Mat *) depth;
-	rgbMat = *(Mat *) rgb;
+
+	depthImg = *(Mat *) depth;
+	rgbImg = *(Mat *) rgb;
 
 	Mat ownMat(Size(640, 480), CV_8UC3, Scalar(0));
-#endif
 
 	pthread_t threads;
 	if (status) {
@@ -181,7 +165,6 @@ JNIEXPORT jstring JNICALL Java_com_jaiprakashgogi_androidkinect_KinectActivity_c
 		return env->NewStringUTF("Preview Started..");
 	} else {
 		die = true;
-		//pthread_exit(NULL);
 		__android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "Stopping thread");
 		return env->NewStringUTF("Preview Stopped..");
 	}

@@ -6,6 +6,8 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -27,12 +29,13 @@ public class KinectActivity extends Activity {
 	private static final String TAG = "KinectActivity";
 	private TextView textView;
 	private Button button;
-	private Mat rgb, depth;
+	private Mat rgb, depth, tmp;
 	private ImageView imrgb;
 	private int count = 0;
 	private Handler staticHandler;
 	private boolean kinectstatus = false;
-	private Bitmap img;
+	private Bitmap rgbBitmap, depthBitmap;
+	
 
 	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 		@Override
@@ -44,7 +47,10 @@ public class KinectActivity extends Activity {
 				System.loadLibrary("androidkinect");
 				rgb = new Mat(480, 640, CvType.CV_8UC3);
 				depth = new Mat(480, 640, CvType.CV_8UC1);
-				img = Bitmap.createBitmap(rgb.cols(), rgb.rows(),Bitmap.Config.ARGB_8888);
+				tmp = new Mat (480, 640, CvType.CV_8U, new Scalar(4));
+				rgbBitmap = Bitmap.createBitmap(rgb.cols(), rgb.rows(),Bitmap.Config.ARGB_8888);
+				depthBitmap = Bitmap.createBitmap(rgb.cols(), rgb.rows(),Bitmap.Config.ARGB_8888);
+				
 			}
 				break;
 			default: {
@@ -82,7 +88,7 @@ public class KinectActivity extends Activity {
 				Log.i(TAG, "Message received " + msg.what);
 				textView.setText("Jai: " + msg.what);
 				if(imrgb != null){
-					imrgb.setImageBitmap(img);
+					imrgb.setImageBitmap(depthBitmap);
 					imrgb.invalidate();
 				}
 			}
@@ -140,12 +146,9 @@ public class KinectActivity extends Activity {
 		(new Thread(new Runnable() {
 			@Override
 			public void run() {
-				Utils.matToBitmap(rgb, img);
-/*				Message msg = staticHandler.obtainMessage();
-				msg.what = count;
-				// TODO Auto-generated method stub
-				Log.i(TAG, "Sending message");
-				staticHandler.sendMessage(msg);*/
+				Utils.matToBitmap(rgb, rgbBitmap);
+				Imgproc.cvtColor(depth, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+				Utils.matToBitmap(tmp, depthBitmap);
 				staticHandler.sendEmptyMessage(count);
 			}
 		})).start();

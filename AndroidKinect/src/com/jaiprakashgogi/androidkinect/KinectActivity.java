@@ -30,7 +30,7 @@ public class KinectActivity extends Activity {
 	private TextView textView;
 	private Button button;
 	private Mat rgb, depth, tmp;
-	private ImageView imrgb;
+	private ImageView imrgb, imdepth;
 	private int count = 0;
 	private Handler staticHandler;
 	private boolean kinectstatus = false;
@@ -82,14 +82,17 @@ public class KinectActivity extends Activity {
 			}
 		});
 		imrgb = (ImageView) findViewById(R.id.imageView1);
+		imdepth = (ImageView) findViewById(R.id.imageView2);
 		Handler handler = new Handler() {
 			@Override
 			public void handleMessage(Message msg) {
 				Log.i(TAG, "Message received " + msg.what);
 				textView.setText("Jai: " + msg.what);
-				if(imrgb != null){
-					imrgb.setImageBitmap(depthBitmap);
+				if(imrgb != null && imdepth != null){
+					imrgb.setImageBitmap(rgbBitmap);
+					imdepth.setImageBitmap(depthBitmap);
 					imrgb.invalidate();
+					imdepth.invalidate();
 				}
 			}
 		};
